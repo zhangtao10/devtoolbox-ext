@@ -1,4 +1,4 @@
-import { el, on, h, store, showError, parseErrorView, jumpTo, createWorkerRunner, persistText } from './ui.js';
+import { el, on, h, store, showError, parseErrorView, jumpTo, createWorkerRunner, createHistory, historyMenu } from './ui.js';
 
 const SAMPLE_L = { id: 1, name: 'Alice', roles: ['admin', 'dev'], profile: { age: 30, city: 'Beijing' }, active: true };
 const SAMPLE_R = { id: 1, name: 'Alice Wang', roles: ['admin'], profile: { age: 31, city: 'Beijing', email: 'a@x.com' }, active: true };
@@ -21,10 +21,9 @@ export function initDiff(section) {
   const side = createVirtualSide(sideBox);
   let rows = null;
 
-  left.value = store.get('diff.left', '');
-  right.value = store.get('diff.right', '');
-  left.addEventListener('input', () => persistText('diff.left', left.value));
-  right.addEventListener('input', () => persistText('diff.right', right.value));
+  const history = createHistory('diff.history');
+  store.remove('diff.left'); // 旧版本保存的上次输入，打开时不再恢复
+  store.remove('diff.right');
 
   function setView(v) {
     section.querySelectorAll('[data-view]').forEach((b) => b.classList.toggle('on', b.dataset.view === v));
@@ -62,6 +61,7 @@ export function initDiff(section) {
       return;
     }
     showError(errBox, null);
+    history.put(null, { left: left.value, right: right.value });
 
     const { diffs } = r;
     const count = (t) => diffs.filter((d) => d.type === t).length;
@@ -87,21 +87,15 @@ export function initDiff(section) {
   on(section, 'compare', compare);
   on(section, 'swap', () => {
     [left.value, right.value] = [right.value, left.value];
-    persistText('diff.left', left.value);
-    persistText('diff.right', right.value);
     compare();
   });
   on(section, 'sample', () => {
     left.value = JSON.stringify(SAMPLE_L, null, 2);
     right.value = JSON.stringify(SAMPLE_R, null, 2);
-    persistText('diff.left', left.value);
-    persistText('diff.right', right.value);
     compare();
   });
   on(section, 'clear', () => {
     left.value = right.value = '';
-    store.set('diff.left', '');
-    store.set('diff.right', '');
     result.hidden = true;
     showError(errBox, null);
   });
@@ -111,8 +105,16 @@ export function initDiff(section) {
   section.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') compare();
   });
+  historyMenu(el(section, 'history'), history, {
+    preview: (d) => `${d.left.slice(0, 120)}  ⇄  ${d.right.slice(0, 120)}`,
+    onPick: (d) => {
+      left.value = d.left;
+      right.value = d.right;
+      compare();
+    },
+    empty: '暂无历史，对比成功后自动记录',
+  });
   setView('side');
-  if (left.value.trim() && right.value.trim()) compare();
 }
 
 // 虚拟滚动的左右对照视图：只渲染可视区域内的行，任意行数都流畅。

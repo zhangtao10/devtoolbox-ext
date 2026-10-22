@@ -7,7 +7,7 @@ const CHUNK = 200; // 每批显示的子项数
 const AUTO_OPEN = 600; // 初次渲染自动展开的子项预算
 export const EXPAND_LIMIT = 20000; // “全部展开”最多渲染的节点数
 
-export function createTree(container, onPath) {
+export function createTree(container, onPath, { indent = () => 2 } = {}) {
   const meta = new WeakMap(); // box 节点 -> { v, path, entries, shown }
 
   function renderNode(key, v, path, isLast) {
@@ -16,12 +16,13 @@ export function createTree(container, onPath) {
       key === undefined
         ? null
         : [h('span', { class: 'k', 'data-path': path }, typeof key === 'number' ? String(key) : JSON.stringify(key)), h('span', { class: 'p' }, ': ')];
-    if (!v || typeof v !== 'object') return h('div', { class: 'n' }, keyEl, primitive(v, path), comma);
+    const cp = h('span', { class: 'cp', title: '复制此节点的 JSON' }, '复制');
+    if (!v || typeof v !== 'object') return withMeta(h('div', { class: 'n' }, keyEl, primitive(v, path), comma, cp), v);
 
     const isArr = Array.isArray(v);
     const size = isArr ? v.length : Object.keys(v).length;
     const [open, close] = isArr ? ['[', ']'] : ['{', '}'];
-    if (!size) return h('div', { class: 'n' }, keyEl, h('span', { class: 'p' }, open + close), comma);
+    if (!size) return withMeta(h('div', { class: 'n' }, keyEl, h('span', { class: 'p' }, open + close), comma, cp), v);
 
     const node = h(
       'div',
@@ -30,11 +31,17 @@ export function createTree(container, onPath) {
       keyEl,
       h('span', { class: 'p' }, open),
       h('span', { class: 'cnt' }, `${isArr ? `${size} 项` : `${size} 个键`} …${close}`),
+      cp,
       h('div', { class: 'ch' }),
       h('span', { class: 'p ch' }, close),
       comma
     );
     meta.set(node, { v, path, entries: null, shown: 0 });
+    return node;
+  }
+
+  function withMeta(node, v) {
+    meta.set(node, { v });
     return node;
   }
 
@@ -120,12 +127,26 @@ export function createTree(container, onPath) {
     if (t.classList.contains('tg')) {
       const node = t.parentElement;
       node.classList.contains('closed') ? openNode(node) : closeNode(node);
+    } else if (t.classList.contains('cp')) {
+      copy(JSON.stringify(meta.get(t.parentElement).v, null, indent()), '已复制节点 JSON');
     } else if (t.dataset.more) {
       const node = t.closest('.n.box');
       renderMore(node, t.dataset.more === 'all' ? Infinity : CHUNK);
     } else if (t.dataset.path) {
       onPath(t.dataset.path);
     }
+  });
+  // 悬停行高亮并显示“复制”按钮（只作用于最近的节点，不影响祖先节点）
+  let hot = null;
+  container.addEventListener('mouseover', (e) => {
+    const n = e.target.closest('.n');
+    if (n === hot) return;
+    hot?.classList.remove('hot');
+    (hot = n)?.classList.add('hot');
+  });
+  container.addEventListener('mouseleave', () => {
+    hot?.classList.remove('hot');
+    hot = null;
   });
   container.addEventListener('dblclick', (e) => {
     const t = e.target.closest('.v');

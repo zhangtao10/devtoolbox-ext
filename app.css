@@ -415,3 +415,41 @@ button:disabled, button:disabled:hover {
 textarea[readonly] { cursor: text; }
 .chk:hover { color: var(--accent); }
 .pane-h .seg, .pane-h button { flex-shrink: 0; flex-wrap: nowrap; }
+
+/* JSON 树：节点复制按钮 */
+.tree .cp {
+  display: none;
+  margin-left: 8px;
+  padding: 0 6px;
+  font: 11px/16px system-ui, sans-serif;
+  color: var(--muted);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: var(--panel);
+  cursor: pointer;
+  user-select: none;
+}
+.tree .n.hot > .cp { display: inline-block; }
+.tree .cp:hover { color: var(--accent); border-color: var(--accent); }
+.error .fix-btn { margin-top: 8px; color: var(--fg); }
+
+/* 历史记录下拉 */
+.hist-pop {
+  position: fixed;
+  z-index: 50;
+  width: min(520px, calc(100vw - 16px));
+  max-height: 60vh;
+  overflow: auto;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 28px rgb(0 0 0 / 0.18);
+  padding: 4px;
+  font-size: 13px;
+}
+.hist-h { display: flex; align-items: center; padding: 6px 8px; color: var(--muted); font-size: 12px; }
+.hist-item { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 6px; cursor: pointer; }
+.hist-item:hover { background: var(--soft); }
+.hist-item > .muted { flex-shrink: 0; font-size: 12px; }
+.hist-pv { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.hist-empty { padding: 14px 8px; text-align: center; }
