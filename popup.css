@@ -1,0 +1,23 @@
+:root { --bg: #fff; --fg: #1f2330; --muted: #6b7280; --line: #e5e7eb; --card: #f6f7fb; --accent: #5b4ee6; }
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #17181c; --fg: #e8e9ee; --muted: #9aa0ac; --line: #2c2e36; --card: #22242b; --accent: #8b80ff; }
+}
+* { box-sizing: border-box; }
+body { margin: 0; width: 300px; padding: 12px; background: var(--bg); color: var(--fg); font: 13px/1.4 system-ui, -apple-system, "PingFang SC", sans-serif; }
+header { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; font-size: 14px; }
+button { font: inherit; color: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--card); border-radius: 10px; }
+button:hover { border-color: var(--accent); }
+.pick { width: 100%; display: flex; gap: 10px; align-items: center; padding: 10px 12px; text-align: left; }
+.pick .ico { font-size: 20px; }
+.pick small { display: block; color: var(--muted); }
+.msg { margin: 6px 2px 0; color: #d9480f; font-size: 12px; }
+.grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+.grid button { padding: 10px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; }
+.grid span { font: 600 16px ui-monospace, Menlo, monospace; color: var(--accent); }
+footer { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+footer .sw { width: 22px; height: 22px; border-radius: 6px; border: 1px solid var(--line); cursor: pointer; padding: 0; }
+button { user-select: none; transition: border-color 0.12s, background-color 0.12s, transform 0.06s; }
+button:active { transform: translateY(1px); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.grid button:hover, .pick:hover { background: color-mix(in srgb, var(--accent) 8%, var(--card)); }
+footer .sw:hover { transform: scale(1.1); }

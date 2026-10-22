@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>DevToolbox</title>
+  <link rel="icon" href="icons/32.png" />
+  <link rel="stylesheet" href="app.css" />
+</head>
+<body>
+  <aside class="side">
+    <div class="brand"><img src="icons/32.png" alt="" width="22" height="22" /> DevToolbox</div>
+    <nav id="nav">
+      <a href="#json"><span>{ }</span>JSON 解析</a>
+      <a href="#diff"><span>⇄</span>JSON 对比</a>
+      <a href="#color"><span>◐</span>颜色转换</a>
+      <a href="#time"><span>⏱</span>时间戳</a>
+      <a href="#codec"><span>⇌</span>编码解码</a>
+      <a href="#regex"><span>.*</span>正则测试</a>
+    </nav>
+  </aside>
+
+  <main>
+    <!-- JSON 解析 -->
+    <section id="tool-json" class="tool">
+      <div class="bar">
+        <h1>JSON 解析</h1>
+        <div class="actions">
+          <button data-act="format" class="primary">格式化</button>
+          <button data-act="minify">压缩</button>
+          <button data-act="sort">键排序</button>
+          <button data-act="escape">转义</button>
+          <button data-act="unescape">去转义</button>
+          <select data-opt="indent" title="缩进">
+            <option value="2">2 空格</option>
+            <option value="4">4 空格</option>
+            <option value="tab">Tab</option>
+          </select>
+          <label class="chk" title="允许注释、尾逗号、单引号、无引号键"><input type="checkbox" data-opt="loose" />宽松模式</label>
+          <button data-act="sample" class="ghost">示例</button>
+          <button data-act="clear" class="ghost">清空</button>
+        </div>
+      </div>
+      <div class="split">
+        <div class="pane">
+          <div class="pane-h">输入</div>
+          <textarea data-el="input" spellcheck="false" placeholder="粘贴 JSON…（输入即自动解析）"></textarea>
+        </div>
+        <div class="pane">
+          <div class="pane-h">
+            <div class="seg" data-el="view">
+              <button data-view="tree" class="on">树形</button>
+              <button data-view="text">文本</button>
+            </div>
+            <span class="muted" data-el="stat"></span>
+            <span class="grow"></span>
+            <button data-act="expand" class="ghost sm">全部展开</button>
+            <button data-act="collapse" class="ghost sm">全部折叠</button>
+            <button data-act="copy" class="sm">复制结果</button>
+          </div>
+          <div data-el="error" class="error" hidden></div>
+          <div data-el="tree" class="tree mono"></div>
+          <textarea data-el="output" class="mono" readonly hidden spellcheck="false"></textarea>
+          <div class="pathbar mono" data-el="path" title="点击复制路径"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- JSON 对比 -->
+    <section id="tool-diff" class="tool">
+      <div class="bar">
+        <h1>JSON 对比</h1>
+        <div class="actions">
+          <button data-act="compare" class="primary">对比</button>
+          <button data-act="swap">左右交换</button>
+          <label class="chk"><input type="checkbox" data-opt="loose" />宽松模式</label>
+          <label class="chk"><input type="checkbox" data-opt="sort" checked />忽略键顺序</label>
+          <button data-act="sample" class="ghost">示例</button>
+          <button data-act="clear" class="ghost">清空</button>
+        </div>
+      </div>
+      <div class="split short">
+        <div class="pane">
+          <div class="pane-h">原始（左）</div>
+          <textarea data-el="left" spellcheck="false" placeholder="旧 JSON"></textarea>
+        </div>
+        <div class="pane">
+          <div class="pane-h">修改后（右）</div>
+          <textarea data-el="right" spellcheck="false" placeholder="新 JSON"></textarea>
+        </div>
+      </div>
+      <div data-el="error" class="error" hidden></div>
+      <div class="diff-result" data-el="result" hidden>
+        <div class="pane-h">
+          <div class="seg" data-el="view">
+            <button data-view="side" class="on">左右对照</button>
+            <button data-view="list">差异列表</button>
+          </div>
+          <span data-el="summary"></span>
+          <span class="grow"></span>
+          <label class="chk"><input type="checkbox" data-opt="only" />仅显示差异行</label>
+        </div>
+        <div data-el="side" class="side-diff mono"></div>
+        <div data-el="list" class="diff-list" hidden></div>
+      </div>
+    </section>
+
+    <!-- 颜色转换 -->
+    <section id="tool-color" class="tool">
+      <div class="bar">
+        <h1>颜色转换</h1>
+        <div class="actions">
+          <button data-act="pick" class="primary">🎯 屏幕取色</button>
+          <button data-act="random">随机颜色</button>
+        </div>
+      </div>
+      <div class="color-top">
+        <div class="swatch" data-el="swatch"><div data-el="swatch-in"></div></div>
+        <div class="color-inputs">
+          <input data-el="input" class="big mono" spellcheck="false"
+                 placeholder="#FF5733 / rgb(…) / hsl(…) / hsv(…) / hwb(…) / cmyk(…) / tomato" />
+          <div class="row">
+            <input type="color" data-el="native" title="调色板" />
+            <label class="alpha">透明度 <input type="range" min="0" max="100" data-el="alpha" /> <span data-el="alpha-v"></span></label>
+          </div>
+          <div data-el="error" class="error inline" hidden></div>
+        </div>
+      </div>
+      <div class="cards">
+        <div class="card">
+          <h2>格式</h2>
+          <div class="formats mono" data-el="formats"></div>
+        </div>
+        <div class="card">
+          <h2>对比度 (WCAG)</h2>
+          <div data-el="contrast" class="contrast"></div>
+          <h2>色阶</h2>
+          <div data-el="shades" class="shades"></div>
+          <h2>取色历史 <button data-act="clear-history" class="ghost sm">清空</button></h2>
+          <div data-el="history" class="history"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 时间戳 -->
+    <section id="tool-time" class="tool">
+      <div class="bar">
+        <h1>时间戳转换</h1>
+        <div class="actions">
+          <select data-el="tz" title="时区"></select>
+        </div>
+      </div>
+      <div class="card now">
+        <div>
+          <div class="muted">当前时间戳（秒）</div>
+          <div class="big mono copyable" data-el="now-s"></div>
+        </div>
+        <div>
+          <div class="muted">当前时间戳（毫秒）</div>
+          <div class="big mono copyable" data-el="now-ms"></div>
+        </div>
+        <div>
+          <div class="muted">当前时间</div>
+          <div class="big mono copyable" data-el="now-date"></div>
+        </div>
+        <button data-act="pause" class="sm">暂停</button>
+      </div>
+      <div class="card">
+        <h2>转换</h2>
+        <div class="row">
+          <input data-el="input" class="big mono grow" spellcheck="false"
+                 placeholder="时间戳（秒/毫秒/微秒/纳秒自动识别）或日期，如 2026-10-21 12:00:00" />
+          <button data-act="now">现在</button>
+          <button data-act="today">今天 0 点</button>
+        </div>
+        <div data-el="error" class="error inline" hidden></div>
+        <table class="kv mono" data-el="result"></table>
+      </div>
+    </section>
+
+    <!-- 编码解码 -->
+    <section id="tool-codec" class="tool">
+      <div class="bar">
+        <h1>编码解码</h1>
+        <div class="actions">
+          <div class="seg" data-el="codecs"></div>
+        </div>
+      </div>
+      <div class="split short">
+        <div class="pane">
+          <div class="pane-h">输入</div>
+          <textarea data-el="input" spellcheck="false" placeholder="输入要编码或解码的文本"></textarea>
+        </div>
+        <div class="pane">
+          <div class="pane-h">输出 <span class="grow"></span><button data-act="copy" class="sm">复制</button></div>
+          <textarea data-el="output" readonly spellcheck="false"></textarea>
+        </div>
+      </div>
+      <div class="actions center">
+        <button data-act="encode" class="primary">编码 →</button>
+        <button data-act="decode" class="primary">解码 →</button>
+        <button data-act="swap">⇅ 输出作为输入</button>
+      </div>
+      <div data-el="error" class="error" hidden></div>
+      <div class="cards">
+        <div class="card">
+          <h2>哈希（基于输入实时计算）</h2>
+          <table class="kv mono" data-el="hashes"></table>
+        </div>
+        <div class="card">
+          <h2>JWT 解析</h2>
+          <textarea data-el="jwt" class="mono small" spellcheck="false" placeholder="粘贴 JWT token"></textarea>
+          <div data-el="jwt-out"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 正则测试 -->
+    <section id="tool-regex" class="tool">
+      <div class="bar">
+        <h1>正则测试</h1>
+        <div class="actions">
+          <select data-el="presets"><option value="">常用正则…</option></select>
+        </div>
+      </div>
+      <div class="card">
+        <div class="regex-line mono">
+          <span>/</span>
+          <input data-el="pattern" spellcheck="false" placeholder="正则表达式" />
+          <span>/</span>
+          <span data-el="flags" class="flags"></span>
+        </div>
+        <div data-el="error" class="error inline" hidden></div>
+      </div>
+      <div class="split short">
+        <div class="pane">
+          <div class="pane-h">测试文本 <span class="grow"></span><span data-el="count" class="badge"></span></div>
+          <div class="hl-wrap">
+            <div data-el="hl" class="hl mono" aria-hidden="true"></div>
+            <textarea data-el="text" class="mono" spellcheck="false" placeholder="输入要匹配的文本"></textarea>
+          </div>
+        </div>
+        <div class="pane">
+          <div class="pane-h">匹配结果</div>
+          <div data-el="matches" class="matches mono"></div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>替换</h2>
+        <div class="row">
+          <input data-el="replace" class="mono grow" spellcheck="false" placeholder="替换为（支持 $1、$<name>、$&）" />
+        </div>
+        <pre data-el="replaced" class="replaced mono"></pre>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+  <script type="module" src="app.js"></script>
+</body>
+</html>

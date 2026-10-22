@@ -1,0 +1,16 @@
+{
+  "manifest_version": 3,
+  "name": "DevToolbox 开发者工具箱",
+  "version": "1.0.0",
+  "description": "JSON 解析 / JSON Diff / 颜色转换 / 页面取色 / 时间戳 / 编码解码 / 正则测试",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "DevToolbox",
+    "default_icon": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" }
+  },
+  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "permissions": ["activeTab", "scripting", "storage"],
+  "commands": {
+    "_execute_action": { "suggested_key": { "default": "Alt+Shift+J" } }
+  }
+}

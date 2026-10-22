@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <header>
+    <img src="icons/32.png" alt="" width="20" height="20" />
+    <strong>DevToolbox</strong>
+  </header>
+  <button id="pick" class="pick">
+    <span class="ico">🎯</span>
+    <span><b>页面取色</b><small>在当前网页上吸取颜色</small></span>
+  </button>
+  <p id="pick-msg" class="msg" hidden></p>
+  <nav class="grid">
+    <button data-tool="json"><span>{ }</span>JSON 解析</button>
+    <button data-tool="diff"><span>⇄</span>JSON 对比</button>
+    <button data-tool="color"><span>🎨</span>颜色转换</button>
+    <button data-tool="time"><span>⏱</span>时间戳</button>
+    <button data-tool="codec"><span>🔐</span>编码解码</button>
+    <button data-tool="regex"><span>.*</span>正则测试</button>
+  </nav>
+  <footer id="recent"></footer>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
