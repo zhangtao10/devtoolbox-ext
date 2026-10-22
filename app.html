@@ -31,12 +31,14 @@
           <button data-act="sort">键排序</button>
           <button data-act="escape">转义</button>
           <button data-act="unescape">去转义</button>
+          <button data-act="repair" title="修复注释、尾逗号、缺逗号、单引号、无引号键、截断等常见问题">一键修复</button>
           <select data-opt="indent" title="缩进">
             <option value="2">2 空格</option>
             <option value="4">4 空格</option>
             <option value="tab">Tab</option>
           </select>
           <label class="chk" title="允许注释、尾逗号、单引号、无引号键"><input type="checkbox" data-opt="loose" />宽松模式</label>
+          <button data-el="history" class="ghost" title="最近 10 次解析记录">历史 ▾</button>
           <button data-act="sample" class="ghost">示例</button>
           <button data-act="clear" class="ghost">清空</button>
         </div>
@@ -75,6 +77,7 @@
           <button data-act="swap">左右交换</button>
           <label class="chk"><input type="checkbox" data-opt="loose" />宽松模式</label>
           <label class="chk"><input type="checkbox" data-opt="sort" checked />忽略键顺序</label>
+          <button data-el="history" class="ghost" title="最近 10 次对比记录">历史 ▾</button>
           <button data-act="sample" class="ghost">示例</button>
           <button data-act="clear" class="ghost">清空</button>
         </div>

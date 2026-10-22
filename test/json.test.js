@@ -98,3 +98,51 @@ test('lineDiff degrades gracefully when budget is exceeded', () => {
   assert.deepEqual(ops.filter((o) => o.type !== 'add').map((o) => o.left), a);
   assert.deepEqual(ops.filter((o) => o.type !== 'del').map((o) => o.right), b);
 });
+
+import { repairJSON } from '../lib/json.js';
+const fix = (s) => repairJSON(s).value;
+
+test('repairJSON: valid input reports no fixes', () => {
+  assert.deepEqual(repairJSON('{"a":[1,2]}'), { ok: true, value: { a: [1, 2] }, fixes: [] });
+});
+
+test('repairJSON: comments, trailing commas, single quotes, bare keys', () => {
+  assert.deepEqual(fix("{ // c\n a: 'x', /* y */ b: [1,2,], }"), { a: 'x', b: [1, 2] });
+});
+
+test('repairJSON: missing commas between members and items', () => {
+  assert.deepEqual(fix('{"a": 1\n "b": [1 2 3]\n}'), { a: 1, b: [1, 2, 3] });
+});
+
+test('repairJSON: python / js literals', () => {
+  assert.deepEqual(fix('{"a": True, "b": None, "c": undefined, "d": NaN}'), { a: true, b: null, c: null, d: null });
+  assert.deepEqual(fix('{a: True // c\n}'), { a: true });
+});
+
+test('repairJSON: truncated input gets closed', () => {
+  assert.deepEqual(fix('{"a": [1, {"b": "hel'), { a: [1, { b: 'hel' }] });
+  assert.deepEqual(fix('{"a": '), { a: null });
+});
+
+test('repairJSON: smart quotes, raw newlines, unescaped inner quotes', () => {
+  assert.deepEqual(fix('{“a”: “b”}'), { a: 'b' });
+  assert.deepEqual(fix('{"a": "x\ny"}'), { a: 'x\ny' });
+  assert.deepEqual(fix('{"a": "he said "hi" ok", "b": 1}'), { a: 'he said "hi" ok', b: 1 });
+});
+
+test('repairJSON: wrappers and extra content', () => {
+  assert.deepEqual(fix('```json\n{"a":1}\n```'), { a: 1 });
+  assert.deepEqual(fix('callback({"a":1});'), { a: 1 });
+  assert.deepEqual(fix('{"a":1}}]'), { a: 1 });
+  assert.deepEqual(fix('{"a":1}\n{"a":2}'), [{ a: 1 }, { a: 2 }]);
+});
+
+test('repairJSON: numbers, missing colon, mismatched bracket, bare string value', () => {
+  assert.deepEqual(fix('[+1, .5, 2., 0x1F]'), [1, 0.5, 2, 31]);
+  assert.deepEqual(fix('{"a" 1, "b": hello world}'), { a: 1, b: 'hello world' });
+  assert.deepEqual(fix('{"a": [1, 2}'), { a: [1, 2] });
+});
+
+test('repairJSON: empty input fails', () => {
+  assert.equal(repairJSON('   ').ok, false);
+});

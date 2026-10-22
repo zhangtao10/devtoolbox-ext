@@ -1,5 +1,5 @@
-import { parseJSON, sortKeys } from '../lib/json.js';
-import { el, on, copy, debounce, store, showError, parseErrorView, jumpTo, toast, createWorkerRunner, persistText } from './ui.js';
+import { parseJSON, sortKeys, repairJSON } from '../lib/json.js';
+import { el, on, h, copy, debounce, store, showError, parseErrorView, jumpTo, toast, createWorkerRunner, createHistory, historyMenu, replaceText } from './ui.js';
 import { createTree, EXPAND_LIMIT } from './json-tree.js';
 
 const SAMPLE = {
@@ -21,16 +21,18 @@ export function initJson(section) {
   const pathBar = el(section, 'path');
   const indentSel = section.querySelector('[data-opt="indent"]');
   const looseChk = section.querySelector('[data-opt="loose"]');
-  const tree = createTree(treeBox, (path) => (pathBar.textContent = path));
+  const tree = createTree(treeBox, (path) => (pathBar.textContent = path), { indent: () => indent() });
   const runInWorker = createWorkerRunner();
   let view = store.get('json.view', 'tree');
   let current; // 最近一次成功解析的值
   let prettyText = ''; // 格式化文本，切到“文本”视图时才写入 textarea（大文本写入很慢）
   let hasValue = false;
+  const history = createHistory('json.history');
+  let historyId = null; // 当前这轮编辑对应的历史记录，连续编辑只更新同一条
 
   indentSel.value = store.get('json.indent', '2');
   looseChk.checked = store.get('json.loose', false);
-  input.value = store.get('json.input', '');
+  store.remove('json.input'); // 旧版本保存的上次输入，打开时不再恢复
 
   const indent = () => (indentSel.value === 'tab' ? '\t' : Number(indentSel.value));
   const pretty = (v) => JSON.stringify(v, null, indent());
@@ -46,7 +48,6 @@ export function initJson(section) {
 
   async function run() {
     const text = input.value;
-    const saved = persistText('json.input', text);
     if (!text.trim()) {
       hasValue = false;
       tree.clear();
@@ -66,7 +67,10 @@ export function initJson(section) {
     if (!r.ok) {
       hasValue = false;
       stat.textContent = '';
-      showError(errBox, parseErrorView(text, r, () => jumpTo(input, r.pos)));
+      showError(errBox, [
+        ...parseErrorView(text, r, () => jumpTo(input, r.pos)),
+        h('button', { class: 'sm fix-btn', onclick: repair }, '🔧 一键修复'),
+      ]);
       return;
     }
     showError(errBox, null);
@@ -75,13 +79,31 @@ export function initJson(section) {
     prettyText = r.pretty;
     output.value = view === 'text' ? prettyText : '';
     tree.render(current);
+    const tooBig = text.length > history.maxSize;
+    if (!tooBig) recordLater(text);
     stat.textContent =
-      `✓ 合法 JSON · ${r.nodes.toLocaleString()} 个节点 · ${formatSize(r.bytes)}` +
-      (saved ? '' : ' · 内容较大，未自动保存');
+      `✓ 合法 JSON · ${r.nodes.toLocaleString()} 个节点 · ${formatSize(r.bytes)}` + (tooBig ? ' · 内容较大，不记入历史' : '');
     stat.title = stat.textContent;
   }
 
   const runLater = debounce(run, 250);
+  const recordLater = debounce((text) => {
+    if (input.value === text) historyId = history.put(historyId, { text }) ?? historyId;
+  }, 1000);
+  const load = (text) => {
+    historyId = null;
+    input.value = text;
+    run();
+  };
+
+  function repair() {
+    const r = repairJSON(input.value);
+    if (!r.ok) return toast('没有可修复的内容');
+    if (!r.fixes.length) return toast('JSON 已合法，无需修复');
+    replaceText(input, pretty(r.value));
+    run();
+    toast(`已修复（可 Ctrl/⌘+Z 撤销）：${r.fixes.join('、')}`, 4000);
+  }
   input.addEventListener('input', runLater);
   indentSel.addEventListener('change', () => {
     store.set('json.indent', indentSel.value);
@@ -120,14 +142,16 @@ export function initJson(section) {
       toast('不是合法的转义字符串');
     }
   });
-  on(section, 'sample', () => {
-    input.value = pretty(SAMPLE);
-    run();
-  });
+  on(section, 'repair', repair);
+  on(section, 'sample', () => load(pretty(SAMPLE)));
   on(section, 'clear', () => {
-    input.value = '';
-    run();
+    load('');
     input.focus();
+  });
+  historyMenu(el(section, 'history'), history, {
+    preview: (d) => d.text,
+    onPick: (d) => load(d.text),
+    empty: '暂无历史，解析成功后自动记录',
   });
   on(section, 'copy', () => hasValue && copy(prettyText));
   on(section, 'expand', () => {
