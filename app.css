@@ -433,6 +433,11 @@ textarea[readonly] { cursor: text; }
 .tree .cp:hover { color: var(--accent); border-color: var(--accent); }
 .error .fix-btn { margin-top: 8px; color: var(--fg); }
 
+/* JSON 解析：curl 请求摘要 */
+.error:has(.curl-req) { background: var(--panel); color: var(--fg); border: 1px solid var(--line); }
+.curl-req { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.curl-req .mono { word-break: break-all; }
+
 /* 历史记录下拉 */
 .hist-pop {
   position: fixed;

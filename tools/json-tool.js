@@ -1,4 +1,5 @@
 import { parseJSON, sortKeys, repairJSON } from '../lib/json.js';
+import { isCurl, parseCurl, toFetch } from '../lib/curl.js';
 import { el, on, h, copy, debounce, store, showError, parseErrorView, jumpTo, toast, createWorkerRunner, createHistory, historyMenu, replaceText } from './ui.js';
 import { createTree, EXPAND_LIMIT } from './json-tree.js';
 
@@ -56,6 +57,7 @@ export function initJson(section) {
       showError(errBox, null);
       return;
     }
+    if (isCurl(text)) return showCurl(text);
     stat.textContent = '解析中…';
     let r;
     try {
@@ -64,6 +66,7 @@ export function initJson(section) {
       if (!e.superseded) stat.textContent = `解析失败：${e.message}`;
       return;
     }
+    if (input.value !== text) return; // 解析期间输入已变化（如换成了 curl 命令）
     if (!r.ok) {
       hasValue = false;
       stat.textContent = '';
@@ -96,6 +99,110 @@ export function initJson(section) {
     run();
   };
 
+  // 输入为 curl 命令：显示请求摘要，由用户点击发送（请求可能有副作用，不自动发送）
+  function showCurl(text) {
+    hasValue = false;
+    tree.clear();
+    output.value = prettyText = '';
+    stat.textContent = '';
+    const r = parseCurl(text);
+    if (!r.ok) return showError(errBox, `✗ curl 命令解析失败：${r.message}`);
+    showError(
+      errBox,
+      h(
+        'div',
+        { class: 'curl-req' },
+        h('div', { class: 'muted' }, `检测到 curl 命令 · ${r.headers.length} 个请求头${r.body !== undefined || r.form ? ' · 带请求体' : ''}`),
+        h('div', { class: 'mono' }, h('b', {}, r.method), ' ', r.url),
+        h('button', { class: 'sm primary', onclick: send, title: 'Ctrl/⌘ + Enter' }, '▶ 发送请求')
+      )
+    );
+  }
+
+  // 扩展页需获得目标域名的权限才能跨域请求；首次访问某域名时由浏览器弹窗确认
+  function allowHost(url) {
+    if (!globalThis.chrome?.permissions) return Promise.resolve(true);
+    const { protocol, hostname } = new URL(url);
+    return chrome.permissions.request({ origins: [`${protocol}//${hostname}/*`] });
+  }
+
+  // fetch 无法设置的请求头（Cookie、User-Agent、Referer 等）通过临时的 declarativeNetRequest 会话规则在网络层改写。
+  // 规则只匹配本标签页发往目标域名、相同方法的请求，请求结束后立即删除。返回是否已改写
+  async function withHeaderRule(url, method, headers, fn) {
+    const dnr = globalThis.chrome?.declarativeNetRequest;
+    if (!headers.length || !dnr) return fn(false);
+    const tab = await chrome.tabs.getCurrent();
+    const id = 1 + Math.floor(Math.random() * 0x7ffffffe);
+    await dnr.updateSessionRules({
+      addRules: [
+        {
+          id,
+          priority: 1,
+          action: {
+            type: 'modifyHeaders',
+            requestHeaders: headers.map(([header, value]) => ({ header, operation: 'set', value })),
+          },
+          condition: {
+            requestDomains: [new URL(url).hostname],
+            requestMethods: [method.toLowerCase()],
+            resourceTypes: ['xmlhttprequest'],
+            ...(tab ? { tabIds: [tab.id] } : {}),
+          },
+        },
+      ],
+    });
+    try {
+      return await fn(true);
+    } finally {
+      await dnr.updateSessionRules({ removeRuleIds: [id] }).catch(() => {});
+    }
+  }
+
+  let sending = null;
+  async function send() {
+    const text = input.value;
+    const req = parseCurl(text);
+    if (!req.ok) return toast(`curl 命令解析失败：${req.message}`);
+    if (!/^https?:/i.test(req.url)) return toast('只支持 http / https 请求');
+    const { url, init, restricted, dropped } = toFetch(req);
+    let granted;
+    try {
+      granted = await allowHost(url); // 必须在点击事件中同步发起，之前不能有 await
+    } catch (e) {
+      return toast(`无法申请访问权限：${e.message}`, 4000);
+    }
+    if (!granted) return toast('未授予访问该域名的权限，无法发送请求', 3000);
+    sending?.abort();
+    const ctrl = (sending = new AbortController());
+    const timer = setTimeout(() => ctrl.abort(), 30000);
+    stat.textContent = `请求中… ${req.method} ${url}`;
+    const t0 = performance.now();
+    try {
+      let rewritten = false;
+      const res = await withHeaderRule(url, req.method, restricted, (ok) => {
+        rewritten = ok;
+        return fetch(url, { ...init, signal: ctrl.signal });
+      });
+      const body = await res.text();
+      if (input.value !== text || ctrl !== sending) return; // 请求期间输入已改动或发起了新请求
+      const ms = Math.round(performance.now() - t0);
+      const parsed = parseJSON(body);
+      replaceText(input, parsed.ok ? pretty(parsed.value) : body);
+      historyId = null;
+      run();
+      const ignored = [...dropped, ...(rewritten ? [] : restricted.map(([k]) => k))];
+      const skip = ignored.length ? ` · 已忽略请求头 ${ignored.join(', ')}` : '';
+      toast(`HTTP ${res.status} ${res.statusText} · ${ms} ms${skip} · Ctrl/⌘+Z 可回到 curl`, 5000);
+    } catch (e) {
+      if (ctrl !== sending) return;
+      stat.textContent = '';
+      toast(ctrl.signal.aborted ? '请求超时（30 秒）' : `请求失败：${e.message}`, 4000);
+    } finally {
+      clearTimeout(timer);
+      if (ctrl === sending) sending = null;
+    }
+  }
+
   function repair() {
     const r = repairJSON(input.value);
     if (!r.ok) return toast('没有可修复的内容');
@@ -105,6 +212,12 @@ export function initJson(section) {
     toast(`已修复（可 Ctrl/⌘+Z 撤销）：${r.fixes.join('、')}`, 4000);
   }
   input.addEventListener('input', runLater);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey) && isCurl(input.value)) {
+      e.preventDefault();
+      send();
+    }
+  });
   indentSel.addEventListener('change', () => {
     store.set('json.indent', indentSel.value);
     run();
